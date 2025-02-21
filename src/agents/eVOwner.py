@@ -8,8 +8,8 @@ class EVOwner(Agent):
     Attributes:
         income (float): Annual income of the owner
         environmental_consciousness (float): Level of environmental awareness (0-1)
-        vehicle (ElectricVehicle): The EV owned by this agent
-        ownership_duration (int): How long they've owned their current vehicle (months)
+        battery (Battery): The battery owned by this agent
+        ownership_duration (int): How long they've owned their current battery (months)
     """
     
     def __init__(self, 
@@ -32,30 +32,30 @@ class EVOwner(Agent):
         super().__init__(unique_id, model, x, y)
         self.income = income
         self.environmental_consciousness = environmental_consciousness
-        self.vehicle = None  # Will be set when ElectricVehicle class is implemented ---------------------------------------------------------------
+        self.battery = None
         self.ownership_duration = 0
         
     def make_purchase_decision(self) -> bool:
-        """Decide whether to purchase a new EV.
+        """Decide whether to purchase a new battery.
         
         The decision is based on:
-        - Current vehicle age and condition (if any)
+        - Current battery age and condition (if any)
         - Income level
         - Environmental consciousness
         
         Returns:
             bool: True if decided to purchase, False otherwise
         """
-        if self.vehicle is None:
-            # No current vehicle, high chance of purchase
+        if self.battery is None:
+            # No current battery, high chance of purchase
             return random.random() < 0.8
             
-        # Consider vehicle age
+        # Consider battery age
         if self.ownership_duration < 24:  # Less than 2 years old
             return False
             
         # Check battery health
-        battery_condition = self.vehicle.battery.assess_condition()
+        battery_condition = self.battery.assess_condition()
         if battery_condition['health'] < Battery.GOOD_HEALTH_THRESHOLD:
             # Higher chance of replacement when battery is at end of first life
             purchase_probability = 0.6
@@ -70,22 +70,20 @@ class EVOwner(Agent):
         return random.random() < min(purchase_probability, 0.9)
         
     def make_end_of_life_decision(self) -> str:
-        """Decide what to do with the EV battery at end of life.
+        """Decide what to do with the battery at end of life.
         
         Returns:
             str: Decision ('recycle', 'refurbish', or 'keep')
         """
-        if not self.vehicle or not self.vehicle.battery:
+        if not self.battery:
             return 'none'
             
-        battery = self.vehicle.battery
-        
         # If battery is still good, keep it
-        if battery.health >= Battery.GOOD_HEALTH_THRESHOLD:
+        if self.battery.health >= Battery.GOOD_HEALTH_THRESHOLD:
             return 'keep'
             
         # If battery is suitable for second life, consider refurbishment
-        if battery.is_suitable_for_second_life():
+        if self.battery.is_suitable_for_second_life():
             # Higher environmental consciousness increases chance of refurbishment
             if random.random() < (0.5 + 0.5 * self.environmental_consciousness):
                 return 'refurbish'
@@ -93,19 +91,20 @@ class EVOwner(Agent):
         # Default to recycling if health is too low
         return 'recycle'
         
-    def maintain_vehicle(self) -> None:
-        """Perform maintenance on the vehicle."""
-        if not self.vehicle:
+    def maintain_battery(self) -> None:
+        """Perform maintenance check on the battery."""
+        if not self.battery:
             return
             
-        # Simple maintenance - just check battery condition
-        battery_condition = self.vehicle.battery.assess_condition()
+        # Check battery condition
+        battery_condition = self.battery.assess_condition()
         if battery_condition['health'] < Battery.SECOND_LIFE_THRESHOLD:
-            # Trigger maintenance when battery health is poor
-            self.vehicle.battery.degrade_battery()  # Simulate wear
+            # Simulate wear
+            self.battery.degrade_battery()
             
     def update_ownership_duration(self) -> None:
-        if self.vehicle:
+        """Update the duration of battery ownership."""
+        if self.battery:
             self.ownership_duration += 1
             
     def step(self) -> None:
@@ -113,21 +112,21 @@ class EVOwner(Agent):
         
         This method is called every time step and coordinates the agent's actions:
         1. Update ownership duration
-        2. Maintain vehicle if needed
+        2. Maintain battery if needed
         3. Make purchase decision if appropriate
         4. Make end-of-life decision if battery is degraded
         """
         self.update_ownership_duration()
-        self.maintain_vehicle()
+        self.maintain_battery()
         
-        # Consider purchasing new vehicle
+        # Consider purchasing new battery
         if self.make_purchase_decision():
             # Logic for actual purchase will be implemented when 
             # CarManufacturer agent is available
             pass
             
         # Check if end-of-life decision needed
-        if self.vehicle and self.vehicle.battery.status == BatteryStatus.END_OF_LIFE:
+        if self.battery and self.battery.status == BatteryStatus.END_OF_LIFE:
             decision = self.make_end_of_life_decision()
             # Logic for handling the decision will be implemented when
-            # RecyclingFacility and BatteryRefurbisher agents are available 
+            # RecyclingFacility and BatteryRefurbisher agents are available
