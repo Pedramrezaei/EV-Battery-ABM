@@ -7,10 +7,7 @@ from matplotlib.colors import to_rgba
 import numpy as np
 import time
 import matplotlib
-# Uncomment this line if you want to run without any window displays
-# matplotlib.use('Agg')  # Use non-interactive backend
 
-# Add the root directory to Python path
 root_dir = Path(__file__).resolve().parents[1]
 sys.path.append(str(root_dir))
 
@@ -28,14 +25,12 @@ from src.utils.constants import (
     DEFAULT_SIMULATION_STEPS
 )
 
-# Import scenarios from generate_figures.py
 try:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
     from generate_figures import scenarios
     print("Successfully imported scenarios from generate_figures.py")
 except ImportError as e:
     print(f"Error importing scenarios: {e}")
-    # Define default scenarios if import fails
     scenarios = {
         "Baseline": {
             "technical_capability": 0.7,
@@ -69,7 +64,6 @@ except ImportError as e:
         }
     }
 
-# Create figures directory if it doesn't exist
 figures_dir = Path(root_dir) / "figures"
 figures_dir.mkdir(exist_ok=True)
 
@@ -80,7 +74,7 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
                   num_refurbishers=DEFAULT_NUM_REFURBISHERS,
                   debug_output=False,
                   save_figures=True,
-                  update_interval=10):  # Only update display every 10 steps
+                  update_interval=10):
     """Run the simulation for a specific scenario and display/save results.
     
     Args:
@@ -95,7 +89,7 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
         save_figures (bool): Whether to save figures to files
         update_interval (int): How often to update the display (every N steps)
     """
-    # Set debug mode
+    # debug mode
     import builtins
     original_print = builtins.print
     
@@ -113,90 +107,84 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
         print(f"Number of recyclers: {num_recyclers}")
         print(f"Number of refurbishers: {num_refurbishers}")
         print(f"Scenario params: {params}")
-        
-        # Create model
+
         model = BatteryCircularityModel(
             num_owners=num_owners,
             num_manufacturers=num_manufacturers,
             num_recyclers=num_recyclers,
             num_refurbishers=num_refurbishers
         )
-        
-        # Set scenario-specific parameters
-        # Manufacturers
+
         for manufacturer in model.manufacturers:
             manufacturer.recycling_commitment = params["recycling_commitment"]
-        
-        # Refurbishers
+
         for refurbisher in model.refurbishers:
             refurbisher.technical_capability = params["technical_capability"]
             refurbisher.capacity = params["refurbisher_capacity"]
         
-        # Set up figure for animation
+        # set up figure
         fig = plt.figure(figsize=(15, 20))  # Taller figure to accommodate 5 plots
         fig.suptitle(f'EV Battery Circularity Simulation: {scenario_name}', fontsize=16)
         
-        # Grid visualization
+        # grid visualization
         grid_ax = plt.subplot2grid((5, 3), (0, 0), rowspan=1, colspan=1)
         grid_ax.set_title('Agent Locations')
         grid_ax.set_xticks([])
         grid_ax.set_yticks([])
         
-        # Battery status chart
+        # battery status
         status_ax = plt.subplot2grid((5, 3), (0, 1), rowspan=1, colspan=2)
         status_ax.set_title('Battery Status Over Time')
         status_ax.set_xlabel('Step')
         status_ax.set_ylabel('Number of Batteries')
         
-        # Circularity rates chart
+        # circularity rates
         rates_ax = plt.subplot2grid((5, 3), (1, 0), rowspan=1, colspan=1)
         rates_ax.set_title('Circularity Rates')
         rates_ax.set_xlabel('Step')
         rates_ax.set_ylabel('Rate')
         
-        # Materials recovered chart
+        # materials recovered
         materials_ax = plt.subplot2grid((5, 3), (1, 1), rowspan=1, colspan=1)
         materials_ax.set_title('Materials Recovered')
         materials_ax.set_xlabel('Material')
         materials_ax.set_ylabel('Amount (kg)')
         
-        # Battery age distribution
+        # battery age distribution
         age_ax = plt.subplot2grid((5, 3), (1, 2), rowspan=1, colspan=1)
         age_ax.set_title('Battery Age Distribution')
         age_ax.set_xlabel('Age (months)')
         age_ax.set_ylabel('Count')
         
-        # Facility processing metrics
+        # facility processing
         facility_ax = plt.subplot2grid((5, 3), (2, 0), rowspan=1, colspan=1)
         facility_ax.set_title('Facility Processing')
         facility_ax.set_xlabel('Step')
         facility_ax.set_ylabel('Count')
         
-        # Facility inventory levels
+        # facility inventory levels
         inventory_ax = plt.subplot2grid((5, 3), (2, 1), rowspan=1, colspan=1)
         inventory_ax.set_title('Facility Inventory Levels')
         inventory_ax.set_xlabel('Step')
         inventory_ax.set_ylabel('Count')
         
-        # Battery flow analysis
+        # battery flow analysis
         flow_ax = plt.subplot2grid((5, 3), (2, 2), rowspan=1, colspan=1)
         flow_ax.set_title('Battery Flow Analysis')
         flow_ax.set_xlabel('Category')
         flow_ax.set_ylabel('Count')
         
-        # NEW: Add grid storage capacity plot
         storage_ax = plt.subplot2grid((5, 3), (3, 0), rowspan=1, colspan=3)
         storage_ax.set_title('Grid Storage Capacity')
         storage_ax.set_xlabel('Step')
         storage_ax.set_ylabel('Capacity (kWh)')
         
-        # NEW: Add utilization rate plot
         util_ax = plt.subplot2grid((5, 3), (4, 0), rowspan=1, colspan=3)
         util_ax.set_title('Facility Utilization Rates')
         util_ax.set_xlabel('Step')
         util_ax.set_ylabel('Utilization Rate')
         
-        # Data storage for original plots
+        # data storage for original plots
         steps_data = []
         active_batteries = []
         end_of_life = []
@@ -205,7 +193,7 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
         recycling_rates = []
         second_life_rates = []
         
-        # Data storage for facility metrics
+        # data storage for facility metrics
         recycler_processed = []
         refurbisher_processed = []
         recycler_inventory = []
@@ -215,17 +203,16 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
         recycler_utilization = []
         refurbisher_utilization = []
         
-        # Create a safe scenario name for filenames
+        # create safe scenario name for filenames
         safe_scenario_name = scenario_name.lower().replace(' ', '_')
         
-        # Run simulation and update plots
+
         for i in range(steps):
-            if i % 10 == 0 or i == steps-1:  # Print progress every 10 steps and last step
+            if i % 10 == 0 or i == steps-1:
                 print(f"Running step {i+1}/{steps} for scenario '{scenario_name}'")
             
             model.step()
-            
-            # Store data for line plots - original metrics
+
             steps_data.append(i)
             active_batteries.append(model.count_batteries_by_status(BatteryStatus.IN_USE))
             end_of_life.append(model.count_batteries_by_status(BatteryStatus.END_OF_LIFE))
@@ -233,8 +220,7 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
             refurbished.append(model.count_batteries_by_status(BatteryStatus.REFURBISHED))
             recycling_rates.append(model.calculate_recycling_rate())
             second_life_rates.append(model.calculate_second_life_rate())
-            
-            # Track facility metrics
+
             recycling_stats = model.get_recycling_statistics()
             refurbishment_stats = model.get_refurbishment_statistics()
             
@@ -243,29 +229,28 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
             recycler_processed.append(current_recycler_processed)
             refurbisher_processed.append(current_refurbisher_processed)
             
-            # Track current inventory levels
+            # track inventory levels
             current_recycler_inventory = recycling_stats['queue_length']
             current_refurbisher_inventory = refurbishment_stats['queue_length']
             recycler_inventory.append(current_recycler_inventory)
             refurbisher_inventory.append(current_refurbisher_inventory)
             
-            # Track materials and grid storage
+            # track materials and grid storage
             materials = recycling_stats['materials_by_type']
             total_materials_recovered.append(sum(materials.values()))
             grid_storage_data.append(model.calculate_total_grid_storage())
             
-            # Track utilization rates using available metrics
+            # track utilization rates
             r_util = current_recycler_inventory / (num_recyclers * 5) if num_recyclers > 0 else 0
             rf_util = current_refurbisher_inventory / (num_refurbishers * 3) if num_refurbishers > 0 else 0
             recycler_utilization.append(min(1.0, r_util))
             refurbisher_utilization.append(min(1.0, rf_util))
             
-            # Only update the display every update_interval steps to reduce overhead
-            # This makes the simulation run much faster while still showing progress
-            if i % update_interval != 0 and i != steps-1:  # Skip display updates except every N steps and final step
+            # only update the display every update_interval steps to reduce overhead
+            if i % update_interval != 0 and i != steps-1:
                 continue
             
-            # Clear all plots for updating
+            # clear all plots for updating
             grid_ax.clear()
             status_ax.clear()
             rates_ax.clear()
@@ -277,7 +262,7 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
             storage_ax.clear()
             util_ax.clear()
             
-            # Reset titles
+            # reset titles
             grid_ax.set_title('Agent Locations')
             status_ax.set_title('Battery Status Over Time')
             rates_ax.set_title('Circularity Rates')
@@ -289,10 +274,10 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
             storage_ax.set_title('Grid Storage Capacity')
             util_ax.set_title('Facility Utilization Rates')
             
-            # Plot grid
+            # plot grid
             plot_grid(model, grid_ax)
             
-            # Plot battery status as stacked area chart
+            # plot battery status
             if i > 0:
                 status_ax.stackplot(
                     steps_data,
@@ -308,21 +293,21 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
                 status_ax.set_xlabel('Step (months)')
                 status_ax.set_ylabel('Number of Batteries')
                 
-            # Plot circularity rates
+            # plot circularity rates
             rates_ax.plot(steps_data, recycling_rates, 'g-', label='Recycling Rate')
             rates_ax.plot(steps_data, second_life_rates, 'm-', label='Second Life Rate')
             rates_ax.legend()
             rates_ax.set_xlabel('Step')
             rates_ax.set_ylabel('Rate')
             
-            # Plot materials recovered
+            # plot materials recovered
             materials = recycling_stats['materials_by_type']
             materials_ax.bar(materials.keys(), materials.values())
             materials_ax.set_xlabel('Material')
             materials_ax.set_ylabel('Amount (kg)')
             plt.setp(materials_ax.get_xticklabels(), rotation=45)
             
-            # Plot battery age distribution
+            # plot battery age distribution
             ages = [agent.battery.age for agent in model.schedule.agents 
                     if isinstance(agent, EVOwner) and agent.battery]
             if ages:
@@ -330,21 +315,21 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
                 age_ax.set_xlabel('Age (months)')
                 age_ax.set_ylabel('Count')
             
-            # Plot facility processing metrics
+            # plot facility processing metrics
             facility_ax.plot(steps_data, recycler_processed, 'r-', label='Recycled')
             facility_ax.plot(steps_data, refurbisher_processed, 'g-', label='Refurbished')
             facility_ax.legend()
             facility_ax.set_xlabel('Step')
             facility_ax.set_ylabel('Cumulative Count')
             
-            # Plot facility inventory levels
+            # plot facility inventory levels
             inventory_ax.plot(steps_data, recycler_inventory, 'r-', label='Recycler Queue')
             inventory_ax.plot(steps_data, refurbisher_inventory, 'g-', label='Refurbisher Queue')
             inventory_ax.legend()
             inventory_ax.set_xlabel('Step')
             inventory_ax.set_ylabel('Current Count')
             
-            # Plot battery flow analysis as a stacked bar
+            # plot battery flow analysis
             if i > 0:
                 battery_counts = model.get_all_battery_counts()
                 
@@ -373,13 +358,13 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
                 total_batteries = sum(values)
                 flow_ax.set_title(f'Battery Status Distribution (Total: {total_batteries})')
             
-            # Plot grid storage capacity
+            # plot grid storage capacity
             storage_ax.plot(steps_data, grid_storage_data, 'b-', label='Grid Storage')
             storage_ax.legend()
             storage_ax.set_xlabel('Step')
             storage_ax.set_ylabel('Capacity (kWh)')
             
-            # Plot utilization rates
+            # plot utilization rates
             util_ax.plot(steps_data, recycler_utilization, 'r-', label='Recycler Utilization')
             util_ax.plot(steps_data, refurbisher_utilization, 'g-', label='Refurbisher Utilization')
             util_ax.legend()
@@ -387,18 +372,15 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
             util_ax.set_ylabel('Utilization Rate')
             util_ax.set_ylim(0, 1)
             
-            plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust for title
-            plt.subplots_adjust(hspace=0.4)  # Add more space between subplots
-            plt.pause(0.001)  # Small pause to update display
-        
-        # Save the final plots to files if requested
+            plt.tight_layout(rect=[0, 0, 1, 0.95])
+            plt.subplots_adjust(hspace=0.4)
+            plt.pause(0.001)
+
         if save_figures:
-            # Save the complete figure
+
             plt.savefig(f"figures/{safe_scenario_name}_complete.png", dpi=300, bbox_inches='tight')
-            
-            # Save individual plots to separate files
-            
-            # Battery Status Distribution
+
+            # BSD
             plt.figure(figsize=(10, 6))
             plt.stackplot(
                 steps_data,
@@ -464,11 +446,9 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
             plt.grid(True, linestyle='--', alpha=0.7)
             plt.savefig(f"figures/{safe_scenario_name}_grid_storage.png", dpi=300, bbox_inches='tight')
             plt.close()
-        
-        # Restore original print
+
         builtins.print = original_print
-        
-        # Print final summary
+
         recycling_stats = model.get_recycling_statistics()
         refurbishment_stats = model.get_refurbishment_statistics()
         battery_counts = model.get_all_battery_counts()
@@ -484,7 +464,6 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
         print(f"Total batteries refurbished: {refurbishment_stats['total_refurbished']}")
         print("==========================\n")
         
-        # Return summary statistics
         return {
             'scenario_name': scenario_name,
             'active_batteries': active_batteries[-1],
@@ -501,17 +480,15 @@ def run_simulation_for_scenario(scenario_name, params, steps=500,
             }
         }
     finally:
-        # Ensure print is restored even if an exception occurs
         builtins.print = original_print
 
 def plot_grid(model, ax):
     """Plot the grid with agents."""
-    # Create a grid representation
-    grid = np.zeros((model.grid.width, model.grid.height, 4))  # RGBA
+    # Create a grid
+    grid = np.zeros((model.grid.width, model.grid.height, 4))
     
-    # Plot each agent
+    # plot each agent
     for cell_content, (x, y) in model.grid.coord_iter():
-        # Skip empty cells
         if not cell_content:
             continue
             
@@ -519,9 +496,9 @@ def plot_grid(model, ax):
         for agent in cell_content:
             if isinstance(agent, EVOwner):
                 color = to_rgba('blue', 0.8)
-                # Add battery indicator if present
+
                 if agent.battery:
-                    # Adjust color based on battery health
+
                     health = agent.battery.health
                     if health > 0.8:
                         color = to_rgba('blue', 0.9)  # Good health
@@ -540,7 +517,7 @@ def plot_grid(model, ax):
                 
             grid[x][y] = color
     
-    ax.imshow(grid.transpose(1, 0, 2))  # Transpose to match grid coordinates
+    ax.imshow(grid.transpose(1, 0, 2))
     ax.set_xticks([])
     ax.set_yticks([])
     
@@ -562,8 +539,7 @@ def run_all_scenarios(steps=500, save_figures=True, generate_summary=True):
         print(f"\n{'='*50}")
         print(f"Running scenario {i}/{total_scenarios}: {scenario_name}")
         print(f"{'='*50}")
-        
-        # Explicitly close any existing plots before starting a new scenario
+
         plt.close('all')
         
         try:
@@ -581,7 +557,6 @@ def run_all_scenarios(steps=500, save_figures=True, generate_summary=True):
             print("Continuing with next scenario...")
             continue
         finally:
-            # Ensure all plot windows are closed before starting the next scenario
             plt.close('all')
     
     if generate_summary and summary_results:
@@ -594,7 +569,6 @@ def run_all_scenarios(steps=500, save_figures=True, generate_summary=True):
     print("\nAll scenarios completed successfully!")
     print(f"Results saved to the 'figures' directory: {figures_dir.resolve()}")
     
-    # Only show plots at the very end if requested
     if save_figures:
         print("\nTo view the figures, check the 'figures' directory.")
     else:

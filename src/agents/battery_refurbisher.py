@@ -37,12 +37,12 @@ class BatteryRefurbisher(Agent):
         self.inventory = []
         self.successful_conversions = 0
         
-        # Add new attributes for more realistic processing
-        self.currently_processing = []  # Batteries being processed/refurbished
-        self.processing_times = {}  # Time remaining for each battery being processed
-        self.operational = True  # Whether the facility is operational
-        self.downtime_counter = 0  # Counter for facility downtime
-        self.refurbished_batteries = []  # Successfully refurbished batteries waiting to be converted
+
+        self.currently_processing = []
+        self.processing_times = {}
+        self.operational = True
+        self.downtime_counter = 0
+        self.refurbished_batteries = []
         
     def receive_battery(self, battery: Battery) -> bool:
         """Add a battery to the refurbisher's inventory.
@@ -53,21 +53,21 @@ class BatteryRefurbisher(Agent):
         Returns:
             bool: True if battery was accepted
         """
-        # Check if facility is operational
+        # Check voor operational
         if not self.operational:
             print(f"Refurbisher {self.unique_id} rejected battery {battery.id}: Facility is temporarily offline")
             return False
             
-        # Check inventory capacity - now consider both inventory and processing
+        # Check  inventory(inventory en processing beide)
         total_batteries = len(self.inventory) + len(self.currently_processing)
         if total_batteries >= self.capacity * 2:  # Buffer size
             print(f"Refurbisher {self.unique_id} rejected battery {battery.id}: Inventory full ({total_batteries}/{self.capacity * 2})")
             return False
             
-        # Check if the battery is suitable for second life
+
         if not battery.is_suitable_for_second_life():
             print(f"Refurbisher {self.unique_id} rejected battery {battery.id}: Not suitable for second life (health: {battery.health:.2f})")
-            # If the battery is not suitable, try to send it to recycling instead
+            # not suitable? -> recycling
             if hasattr(self.model, 'forward_to_recycler'):
                 print(f"Refurbisher {self.unique_id} is forwarding battery {battery.id} to recycling instead")
                 return self.model.forward_to_recycler(battery)
@@ -76,7 +76,7 @@ class BatteryRefurbisher(Agent):
         self.inventory.append(battery)
         print(f"Refurbisher {self.unique_id} accepted battery {battery.id}. Inventory: {len(self.inventory)}, Processing: {len(self.currently_processing)}")
         
-        # Ensure the model tracks that this battery is now in a refurbishing facility
+        # track battery
         if hasattr(self.model, 'track_battery'):
             self.model.track_battery(battery)
             
@@ -88,17 +88,17 @@ class BatteryRefurbisher(Agent):
         Args:
             battery (Battery): Battery to refurbish
         """
-        # Remove from inventory and add to processing queue
+
         if battery in self.inventory:
             self.inventory.remove(battery)
             
         self.currently_processing.append(battery)
-        
-        # Refurbishing takes longer than recycling, especially for batteries in worse condition
+
+
         base_time = 2  # Minimum 2 months
         health_factor = max(1, int((Battery.GOOD_HEALTH_THRESHOLD - battery.health) * 5))
         
-        # Adjust time based on technical capability - better capability = faster
+        # time based on technical capability
         tech_factor = max(1, int((1 - self.technical_capability) * 3))
         
         processing_time = base_time + health_factor + tech_factor
@@ -115,7 +115,6 @@ class BatteryRefurbisher(Agent):
         Returns:
             float: Assessment score (0-1)
         """
-        # Base assessment on battery health and technical capability
         base_score = battery.health / Battery.GOOD_HEALTH_THRESHOLD
         expertise_factor = 0.8 + 0.2 * self.technical_capability
         
@@ -134,15 +133,14 @@ class BatteryRefurbisher(Agent):
         """
         print(f"Refurbisher {self.unique_id} completing refurbishment of battery {battery.id}")
         
-        # Remove from processing queue
+        # weg uit processing queue
         if battery in self.currently_processing:
             self.currently_processing.remove(battery)
-            
-        # Clear processing time
+
         if battery.id in self.processing_times:
             del self.processing_times[battery.id]
             
-        # Determine if refurbishment is successful
+        # check successful
         assessment_score = self.assess_battery(battery)
         success_chance = assessment_score * self.technical_capability
         
@@ -157,7 +155,7 @@ class BatteryRefurbisher(Agent):
             
         print(f"Refurbisher {self.unique_id} failed to refurbish battery {battery.id}")
         
-        # If refurbishment fails, try to recycle the battery
+        #refurbishment fails -> recycle
         if hasattr(self.model, 'forward_to_recycler'):
             print(f"Refurbisher {self.unique_id} is forwarding failed battery {battery.id} to recycling")
             return self.model.forward_to_recycler(battery)
@@ -176,21 +174,21 @@ class BatteryRefurbisher(Agent):
         total_capacity = 0.0
         for battery in batteries:
             if battery.status == BatteryStatus.REFURBISHED:
-                # Grid storage can use 70-90% of original capacity
+                # Grid storage use 70-90% of  capacity
                 usable_factor = DEFAULT_GRID_STORAGE_FACTOR[0] + (DEFAULT_GRID_STORAGE_FACTOR[1] - DEFAULT_GRID_STORAGE_FACTOR[0]) * self.technical_capability
                 total_capacity += battery.capacity * usable_factor
         return total_capacity
         
     def step(self) -> None:
         """Execute one step of the Battery Refurbisher agent."""
-        # Random chance of facility downtime (7% chance per step - more complex than recycling)
+        # random chance of downtime
         if self.operational and random.random() < 0.07:
             self.operational = False
-            self.downtime_counter = random.randint(1, 4)  # 1-4 months of downtime
+            self.downtime_counter = random.randint(1, 4)
             print(f"Refurbisher {self.unique_id} is temporarily offline for {self.downtime_counter} months (maintenance/upgrades)")
             return
             
-        # If facility is down, decrease downtime counter
+        # if down, decrease counter
         if not self.operational:
             self.downtime_counter -= 1
             if self.downtime_counter <= 0:
@@ -200,28 +198,26 @@ class BatteryRefurbisher(Agent):
                 print(f"Refurbisher {self.unique_id} remains offline for {self.downtime_counter} more months")
             return
         
-        # Process batteries currently being refurbished
+
         completed = []
         for battery in list(self.currently_processing):
-            # Check if battery has a processing time entry
+            # check for processing time entry
             if battery.id not in self.processing_times:
                 print(f"Warning: Battery {battery.id} has no processing time record. Setting default time.")
                 self.processing_times[battery.id] = 3  # Default to 3 months processing time
-                
-            # Now safely decrease processing time
+
             self.processing_times[battery.id] -= 1
-            
-            # If processing is complete, mark for completion
+
             if self.processing_times[battery.id] <= 0:
                 completed.append(battery)
                 
-        # Complete processing for batteries that are done
+        # complete processing
         refurbished_this_step = []
         for battery in completed:
             if self.refurbish_battery(battery):
                 refurbished_this_step.append(battery)
                 
-        # Start processing new batteries up to capacity
+        # start processing new batteries
         available_capacity = self.capacity - len(self.currently_processing)
         
         if available_capacity > 0 and self.inventory:
@@ -233,8 +229,8 @@ class BatteryRefurbisher(Agent):
             for battery in batteries_to_process:
                 self.start_processing(battery)
                 
-        # Convert refurbished batteries to grid storage periodically (every 3-6 months)
-        # This simulates the batch process of preparing and installing grid storage systems
+        # convert refurbished batteries periodically
+        # simulates the  process of preparing and installing grid storage systems
         if self.refurbished_batteries and (self.model.schedule.steps % random.randint(3, 6) == 0):
             storage_capacity = self.convert_to_grid_storage(self.refurbished_batteries)
             print(f"Refurbisher {self.unique_id} created {storage_capacity:.2f} kWh of grid storage from {len(self.refurbished_batteries)} batteries")

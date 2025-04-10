@@ -15,7 +15,6 @@ from src.utils.constants import (
 if TYPE_CHECKING:
     from src.agents.eVOwner import EVOwner
 
-# This is an enum that is used to store the status of the battery in the lifecycle.
 class BatteryStatus(Enum):
     """Status of a battery in the lifecycle.
     
@@ -28,7 +27,7 @@ class BatteryStatus(Enum):
     NEW = "new"
     IN_USE = "in_use"
     END_OF_LIFE = "end_of_life"
-    COLLECTED = "collected"  # Intermediate state when manufacturer takes back
+    COLLECTED = "collected"
     REFURBISHED = "refurbished"
     RECYCLED = "recycled"
 
@@ -52,8 +51,7 @@ class Battery:
         0.8 - 0.6: End of first life, suitable for second life
         < 0.6: End of life, needs recycling
     """
-    
-    # Health thresholds
+
     GOOD_HEALTH_THRESHOLD = BATTERY_GOOD_HEALTH_THRESHOLD
     SECOND_LIFE_THRESHOLD = BATTERY_SECOND_LIFE_THRESHOLD
     
@@ -96,37 +94,37 @@ class Battery:
         previous_health = self.health
         
         for _ in range(cycles):
-            # Non-linear degradation model with three phases
+            # Non-linear degradation model
             if self.cycle_count < 200:  
-                # Phase 1: Initial slow degradation (break-in period)
-                degradation_factor = 0.7  # Slower initial degradation
+                # Phase 1, Initial slow degradation
+                degradation_factor = 0.7
             elif self.cycle_count > 1000:  
-                # Phase 3: End-of-life accelerated degradation
-                degradation_factor = 1.5  # Faster degradation at end of life
+                # Phase 3, End-of-life accelerated degradation
+                degradation_factor = 1.5
             else:
-                # Phase 2: Normal linear degradation
+                # Phase 2, Normal linear degradation
                 degradation_factor = 1.0
                 
-            # Calculate capacity loss based on current phase
+
             capacity_loss = self.initial_capacity * self.degradation_rate * degradation_factor
             self.capacity -= capacity_loss
             self.cycle_count += 1
             
-        # Update health as percentage of initial capacity
+        #healh as percentage
         self.health = max(0.0, self.capacity / self.initial_capacity)
         
-        # Log significant health drops
+
         health_drop = previous_health - self.health
-        if health_drop > 0.05:  # Health dropped by more than 5%
+        if health_drop > 0.05:  # health drop meer dan 5%
             print(f"Battery {self.id} health dropped significantly: {previous_health:.2f} -> {self.health:.2f} (age: {self.age} months, cycles: {self.cycle_count})")
         
-        # Update status based on health thresholds
+
+
         if self.status == BatteryStatus.IN_USE:
             if self.health < self.SECOND_LIFE_THRESHOLD:
                 self.change_status(BatteryStatus.END_OF_LIFE)
                 print(f"Battery {self.id} changed to END_OF_LIFE. Health: {self.health:.2f}, Age: {self.age} months, Cycles: {self.cycle_count}")
-            elif self.health < self.GOOD_HEALTH_THRESHOLD and self.age > 60:  # Only consider second life for older batteries
-                # Battery is in range for second life consideration
+            elif self.health < self.GOOD_HEALTH_THRESHOLD and self.age > 60:  # alleen second life voor oude batterij
                 print(f"Battery {self.id} now in second-life range. Health: {self.health:.2f}, Age: {self.age} months, Cycles: {self.cycle_count}")
         
     def assess_condition(self) -> dict:
@@ -155,7 +153,7 @@ class Battery:
             months (int): Number of months to age the battery
         """
         self.age += months
-        if self.age % 12 == 0:  # Log every year
+        if self.age % 12 == 0:  # Voor elk jaar
             print(f"Battery {self.id} is now {self.age} months old. Health: {self.health:.2f}")
         
     def change_status(self, new_status: BatteryStatus) -> None:

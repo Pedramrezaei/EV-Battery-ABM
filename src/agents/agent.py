@@ -2,7 +2,7 @@ from mesa import Agent as MesaAgent
 from typing import Optional, Tuple
 from dataclasses import dataclass
 
-@dataclass # This is a data class that is used to store the location of the agent.
+@dataclass
 class Location:
     """Represents a location in the simulation space. """
 

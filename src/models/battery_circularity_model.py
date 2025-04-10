@@ -66,45 +66,40 @@ class BatteryCircularityModel(Model):
         self.grid = MultiGrid(width, height, True)
         self.schedule = RandomActivation(self)
         
-        # Lists to keep track of different agent types
+
         self.manufacturers = []
         self.recyclers = []
         self.refurbishers = []
         self.owners = []
         
-        # NEW: Track all batteries in the system, including those not with owners
+
         self.all_batteries = []
-        self.stranded_batteries = []  # Batteries that couldn't be handed off properly
-        
-        # Create agents
+        self.stranded_batteries = []
+
         self.create_manufacturers()
         self.create_recyclers()
         self.create_refurbishers()
         self.create_owners()
         
-        # Initial battery distribution
+
         self.distribute_initial_batteries()
-        
-        # Set up data collection
+
         self.datacollector = DataCollector(
             model_reporters={
-                # Battery lifecycle metrics
+
                 "Active_Batteries": lambda m: self.count_batteries_by_status(BatteryStatus.IN_USE),
                 "End_Of_Life": lambda m: self.count_batteries_by_status(BatteryStatus.END_OF_LIFE),
                 "Collected": lambda m: self.count_batteries_by_status(BatteryStatus.COLLECTED),
                 "Recycled": lambda m: self.count_batteries_by_status(BatteryStatus.RECYCLED),
                 "Refurbished": lambda m: self.count_batteries_by_status(BatteryStatus.REFURBISHED),
                 "Stranded": lambda m: len(self.stranded_batteries),
-                
-                # Circularity metrics
+
                 "Recycling_Rate": lambda m: self.calculate_recycling_rate(),
                 "Second_Life_Rate": lambda m: self.calculate_second_life_rate(),
                 "Total_Grid_Storage": lambda m: self.calculate_total_grid_storage(),
                 
-                # Material recovery metrics
                 "Materials_Recovered": lambda m: self.get_total_materials_recovered(),
                 
-                # Economic metrics
                 "Average_Battery_Age": lambda m: self.calculate_average_battery_age()
             }
         )
@@ -113,30 +108,29 @@ class BatteryCircularityModel(Model):
         """Distribute initial batteries to a portion of EV owners with realistic age distribution."""
         print("Distributing initial batteries with age distribution...")
         
-        # Give batteries to most of the owners (80%)
+        # batteries to most of the owners, 80%
         for owner in self.owners[:int(self.num_owners * 0.8)]:
             manufacturer = self.random.choice(self.manufacturers)
             battery = manufacturer.produce_battery(owner)
             
             if battery:
-                # Assign a random initial age between 0 and 60 months (0-5 years)
+                # random initial age
                 initial_age = self.random.randint(0, 60)
                 
-                # Apply aging and degradation to simulate real-world usage
+                # aging and degradation
                 battery.status = BatteryStatus.IN_USE
                 
-                # Age the battery to its initial age
+
                 for _ in range(initial_age):
                     battery.update_age(1)
-                    # Add some random degradation for each month
                     cycles = self.random.randint(10, 20)
                     battery.degrade_battery(cycles=cycles)
                 
-                # Set owner's battery and ownership duration
+
                 owner.battery = battery
                 owner.ownership_duration = initial_age
                 
-                # Add to tracked batteries
+
                 self.all_batteries.append(battery)
                 
                 print(f"Owner {owner.unique_id} received battery {battery.id} " +
@@ -164,7 +158,7 @@ class BatteryCircularityModel(Model):
             )
             self.schedule.add(manufacturer)
             self.manufacturers.append(manufacturer)
-            # Random grid placement
+            # rand placement
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             self.grid.place_agent(manufacturer, (x, y))
@@ -202,9 +196,9 @@ class BatteryCircularityModel(Model):
     def create_owners(self) -> None:
         """Create EV owner agents."""
         for i in range(self.num_owners):
-            # Random income between 30k and 120k
+            # rand income
             income = self.random.uniform(INCOME_RANGE[0], INCOME_RANGE[1])
-            # Random environmental consciousness
+            # rand environmental consciousness
             env_consciousness = self.random.uniform(ENVIRONMENTAL_CONSCIOUSNESS_RANGE[0], ENVIRONMENTAL_CONSCIOUSNESS_RANGE[1])
             
             owner = EVOwner(
@@ -225,7 +219,6 @@ class BatteryCircularityModel(Model):
         if eol_count > 0:
             print(f"Processing {eol_count} end-of-life batteries")
             
-        # Track the success rate of handoffs
         successful_handoffs = 0
         
         for owner in self.owners:
@@ -233,27 +226,24 @@ class BatteryCircularityModel(Model):
                 decision = owner.make_end_of_life_decision()
                 
                 if decision in ['recycle', 'refurbish']:
-                    # Find a manufacturer to take back the battery
                     for manufacturer in self.manufacturers:
                         old_battery = owner.battery
                         success = manufacturer.handle_take_back(old_battery)
                         if success:
                             successful_handoffs += 1
                             print(f"Battery from owner {owner.unique_id} successfully taken back by manufacturer {manufacturer.unique_id}")
-                            # Important: Only set owner's battery to None AFTER successful handoff
+                            # Important: only set owner's battery to None AFTER successful handoff
                             owner.battery = None
                             owner.ownership_duration = 0
                             break
-                    else:  # This runs if no break occurred in the for loop
+                    else:
                         print(f"WARNING: No manufacturer took back the battery from owner {owner.unique_id}")
-                        # Track this stranded battery
                         self.track_stranded_battery(owner.battery)
                         owner.battery = None
                         owner.ownership_duration = 0
                 elif decision == 'keep':
                     print(f"Owner {self.unique_id} decided to keep their end-of-life battery")
-        
-        # Report on handoff success
+
         if eol_count > 0:
             print(f"End-of-life battery handoff success rate: {successful_handoffs}/{eol_count} " +
                   f"({(successful_handoffs/eol_count)*100:.1f}%)")
@@ -270,18 +260,15 @@ class BatteryCircularityModel(Model):
         if not self.refurbishers:
             print("WARNING: No refurbishers available in the model")
             return False
-            
-        # Ensure the battery is being tracked
+
         self.track_battery(battery)
-            
-        # Try all refurbishers until one accepts the battery
+
         for refurbisher in self.refurbishers:
             if refurbisher.receive_battery(battery):
                 print(f"Refurbisher {refurbisher.unique_id} accepted battery {battery.id}")
                 return True
                 
         print(f"WARNING: No refurbisher had capacity for battery {battery.id}")
-        # If no refurbisher took it, track it as stranded
         self.track_stranded_battery(battery)
         return False
                 
@@ -298,17 +285,16 @@ class BatteryCircularityModel(Model):
             print("WARNING: No recyclers available in the model")
             return False
             
-        # Ensure the battery is being tracked
+        # track
         self.track_battery(battery)
             
-        # Try all recyclers until one accepts the battery
+        # Try until one accepts the bat
         for recycler in self.recyclers:
             if recycler.receive_battery(battery):
                 print(f"Recycler {recycler.unique_id} accepted battery {battery.id}")
                 return True
                 
         print(f"WARNING: No recycler had capacity for battery {battery.id}")
-        # If no recycler took it, track it as stranded
         self.track_stranded_battery(battery)
         return False
                 
@@ -320,7 +306,6 @@ class BatteryCircularityModel(Model):
             
         for owner in self.owners:
             if owner.make_purchase_decision():
-                # Try all manufacturers until one succeeds
                 for manufacturer in self.manufacturers:
                     new_battery = manufacturer.produce_battery(owner)
                     if new_battery:
@@ -328,27 +313,23 @@ class BatteryCircularityModel(Model):
                         new_battery.status = BatteryStatus.IN_USE
                         print(f"Owner {owner.unique_id} received new battery {new_battery.id} from manufacturer {manufacturer.unique_id}")
                         break
-                else:  # This runs if no break occurred in the for loop
+                else:
                     print(f"WARNING: No manufacturer could produce a battery for owner {owner.unique_id}")
                     
     def step(self) -> None:
         """Execute one step of the model."""
         print(f"\n--- STEP {self.schedule.steps + 1} ---")
-        
-        # Update all agents
+
         self.schedule.step()
-        
-        # Get battery counts before lifecycle handling
+
         before_counts = self.get_all_battery_counts()
         print("Battery counts before lifecycle handling:")
         for status, count in before_counts.items():
             print(f"  {status}: {count}")
         
-        # Handle battery lifecycle events
         self.handle_end_of_life_batteries()
         self.handle_battery_purchases()
-        
-        # Process batteries at facilities
+
         print("\nProcessing facilities:")
         for recycler in self.recyclers:
             print(f"Recycler {recycler.unique_id} has {len(recycler.current_inventory)} batteries in queue")
@@ -358,10 +339,8 @@ class BatteryCircularityModel(Model):
             print(f"Refurbisher {refurbisher.unique_id} has {len(refurbisher.inventory)} batteries in queue")
             refurbisher.step()
             
-        # Update model data
         self.datacollector.collect(self)
         
-        # Get battery counts after all processing
         after_counts = self.get_all_battery_counts()
         print("\nBattery counts after all processing:")
         for status, count in after_counts.items():
@@ -386,30 +365,24 @@ class BatteryCircularityModel(Model):
         """
         count = 0
         
-        # Count batteries with owners
         for owner in self.owners:
             if owner.battery and owner.battery.status == status:
                 count += 1
                 
-        # Count batteries in recycler inventory
         for recycler in self.recyclers:
             for battery in recycler.current_inventory:
                 if battery.status == status:
                     count += 1
                     
-        # Count batteries in refurbisher inventory
         for refurbisher in self.refurbishers:
             for battery in refurbisher.inventory:
                 if battery.status == status:
                     count += 1
                     
-        # Count stranded batteries
         for battery in self.stranded_batteries:
             if battery.status == status:
                 count += 1
                 
-        # For RECYCLED and REFURBISHED status, we need to count all batteries
-        # that have ever reached these states, since they're terminal states
         if status == BatteryStatus.RECYCLED:
             count = sum(recycler.total_processed for recycler in self.recyclers)
         elif status == BatteryStatus.REFURBISHED:
@@ -437,7 +410,7 @@ class BatteryCircularityModel(Model):
             float: Proportion of end-of-life batteries that get refurbished
                   instead of recycled
         """
-        # Count total batteries that have been processed by both types of facilities
+        # count total bat
         total_recycled = sum(recycler.total_processed for recycler in self.recyclers)
         total_refurbished = sum(refurbisher.successful_conversions for refurbisher in self.refurbishers)
         
@@ -446,7 +419,7 @@ class BatteryCircularityModel(Model):
         if total_processed == 0:
             return 0.0
         
-        # Second life rate is the proportion of processed batteries that were refurbished
+
         return total_refurbished / total_processed
         
     def calculate_total_grid_storage(self) -> float:
@@ -467,7 +440,7 @@ class BatteryCircularityModel(Model):
             'copper': 0.0
         }
         
-        # Sum materials recovered across all recycling facilities
+        # Sum materials
         for recycler in self.recyclers:
             for material, amount in recycler.total_materials.items():
                 totals[material] += amount
@@ -496,7 +469,7 @@ class BatteryCircularityModel(Model):
         total_processed = sum(recycler.total_processed for recycler in self.recyclers)
         total_in_queue = sum(len(recycler.current_inventory) for recycler in self.recyclers)
         
-        # Calculate average efficiency if any batteries have been processed
+        # calc average efficiency
         if total_processed > 0:
             avg_efficiency = sum(recycler.efficiency_rate * recycler.total_processed 
                                for recycler in self.recyclers) / total_processed
@@ -523,7 +496,7 @@ class BatteryCircularityModel(Model):
         total_refurbished = sum(refurbisher.successful_conversions for refurbisher in self.refurbishers)
         total_in_queue = sum(len(refurbisher.inventory) for refurbisher in self.refurbishers)
         
-        # Calculate average success rate if any refurbishers exist
+        # calc avg success rate
         if self.refurbishers:
             avg_capability = sum(refurbisher.technical_capability for refurbisher in self.refurbishers) / len(self.refurbishers)
         else:
@@ -548,25 +521,25 @@ class BatteryCircularityModel(Model):
         Returns:
             Dict mapping status descriptions to counts
         """
-        # Count batteries with owners
+
         owner_batteries = {
             'In Use': self.count_batteries_by_status(BatteryStatus.IN_USE),
             'End of Life': self.count_batteries_by_status(BatteryStatus.END_OF_LIFE),
         }
         
-        # Count batteries in processing queues
+
         in_processing = {
             'In Recycler Queue': sum(len(recycler.current_inventory) for recycler in self.recyclers),
             'In Refurbisher Queue': sum(len(refurbisher.inventory) for refurbisher in self.refurbishers),
         }
         
-        # Count processed batteries
+
         processed = {
             'Recycled': sum(recycler.total_processed for recycler in self.recyclers),
             'Refurbished': sum(refurbisher.successful_conversions for refurbisher in self.refurbishers),
         }
         
-        # Combine all counts
+
         result = {}
         result.update(owner_batteries)
         result.update(in_processing)

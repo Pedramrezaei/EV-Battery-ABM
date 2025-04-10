@@ -51,11 +51,11 @@ class RecyclingFacility(Agent):
             'copper': 0.0
         }
         
-        # Add new attributes for more realistic processing
-        self.currently_processing = []  # Batteries being processed
-        self.processing_times = {}  # Time remaining for each battery being processed
-        self.operational = True  # Whether the facility is operational
-        self.downtime_counter = 0  # Counter for facility downtime
+
+        self.currently_processing = []
+        self.processing_times = {}
+        self.operational = True
+        self.downtime_counter = 0
         
     def receive_battery(self, battery: Battery) -> bool:
         """Add a battery to the facility's inventory.
@@ -66,18 +66,18 @@ class RecyclingFacility(Agent):
         Returns:
             bool: True if battery was accepted
         """
-        # Check if facility is operational
+
         if not self.operational:
             print(f"Recycler {self.unique_id} rejected battery {battery.id}: Facility is temporarily offline")
             return False
             
-        # Check inventory capacity - now consider both inventory and processing
+
         total_batteries = len(self.current_inventory) + len(self.currently_processing)
         if total_batteries >= self.processing_capacity * 2:  # Buffer size
             print(f"Recycler {self.unique_id} rejected battery {battery.id}: Inventory full ({total_batteries}/{self.processing_capacity * 2})")
             return False
             
-        # Accept either END_OF_LIFE or COLLECTED batteries
+        # accept either EOL or COLLECTED bat
         if battery.status not in [BatteryStatus.END_OF_LIFE, BatteryStatus.COLLECTED]:
             print(f"Recycler {self.unique_id} rejected battery {battery.id}: Incorrect status {battery.status.value}")
             return False
@@ -85,7 +85,7 @@ class RecyclingFacility(Agent):
         self.current_inventory.append(battery)
         print(f"Recycler {self.unique_id} accepted battery {battery.id}. Inventory: {len(self.current_inventory)}, Processing: {len(self.currently_processing)}")
         
-        # Ensure the model tracks that this battery is now in a recycling facility
+        # track
         if hasattr(self.model, 'track_battery'):
             self.model.track_battery(battery)
             
@@ -97,16 +97,16 @@ class RecyclingFacility(Agent):
         Args:
             battery (Battery): Battery to process
         """
-        # Remove from inventory and add to processing queue
+
         if battery in self.current_inventory:
             self.current_inventory.remove(battery)
             
         self.currently_processing.append(battery)
         
-        # Determine processing time based on battery health and complexity
-        # Lower health batteries take longer to process
-        base_time = 1  # Minimum 1 month
-        health_factor = max(1, int((1 - battery.health) * 3))  # More degraded = longer processing
+
+
+        base_time = 1
+        health_factor = max(1, int((1 - battery.health) * 3))
         processing_time = base_time + health_factor
         
         self.processing_times[battery.id] = processing_time
@@ -123,18 +123,17 @@ class RecyclingFacility(Agent):
         """
         print(f"Recycler {self.unique_id} completing processing of battery {battery.id} (health: {battery.health:.2f})")
         
-        # Remove from processing queue
+
         if battery in self.currently_processing:
             self.currently_processing.remove(battery)
             
-        # Clear processing time
+
         if battery.id in self.processing_times:
             del self.processing_times[battery.id]
         
-        # Base material content (kg) for a typical EV battery
+
         base_materials = BATTERY_MATERIALS
-        
-        # Recovery affected by battery health and facility efficiency
+
         recovery_rate = self.efficiency_rate * (0.8 + 0.2 * battery.health)
         
         recovered = {}
@@ -144,7 +143,7 @@ class RecyclingFacility(Agent):
             self.total_materials[material] += recovered_amount
             recovered[material] = recovered_amount
             
-        # Only the recycling facility should set RECYCLED status
+        # only the recycling facility should set RECYCLED status
         previous_status = battery.status
         battery.change_status(BatteryStatus.RECYCLED)
         self.total_processed += 1
@@ -184,14 +183,13 @@ class RecyclingFacility(Agent):
         
     def step(self) -> None:
         """Execute one step of the Recycling Facility agent."""
-        # Random chance of facility downtime (5% chance per step)
+        # random downtime 5%
         if self.operational and random.random() < 0.05:
             self.operational = False
-            self.downtime_counter = random.randint(1, 3)  # 1-3 months of downtime
+            self.downtime_counter = random.randint(1, 3)
             print(f"Recycler {self.unique_id} is temporarily offline for {self.downtime_counter} months (maintenance)")
             return
-            
-        # If facility is down, decrease downtime counter
+
         if not self.operational:
             self.downtime_counter -= 1
             if self.downtime_counter <= 0:
@@ -201,27 +199,27 @@ class RecyclingFacility(Agent):
                 print(f"Recycler {self.unique_id} remains offline for {self.downtime_counter} more months")
             return
             
-        # Process batteries currently being processed
+        # Process bat currently being processed
         completed = []
         batteries_to_remove = []
         for battery in list(self.currently_processing):
             # Check if battery has a processing time entry
             if battery.id not in self.processing_times:
                 print(f"Warning: Battery {battery.id} has no processing time record. Setting default time.")
-                self.processing_times[battery.id] = 2  # Default to 2 months processing time
+                self.processing_times[battery.id] = 2
             
-            # Now safely decrease processing time
+
             self.processing_times[battery.id] -= 1
             
-            # If processing is complete, mark for completion
+
             if self.processing_times[battery.id] <= 0:
                 completed.append(battery)
                 
-        # Complete processing for batteries that are done
+
         for battery in completed:
             self.process_battery(battery)
             
-        # Start processing new batteries up to capacity
+
         available_capacity = self.processing_capacity - len(self.currently_processing)
         
         if available_capacity > 0 and self.current_inventory:
