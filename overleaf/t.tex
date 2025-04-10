@@ -1,0 +1,70 @@
+\section{Agent-Based Model Design}
+
+Our agent-based model (ABM) simulates the electric vehicle battery lifecycle with a focus on circularity pathways. The model consists of heterogeneous agent types that interact according to defined behaviors and decision-making processes.
+
+\subsection{Model Structure}
+The model implements a Mesa-based architecture with the following key components:
+\begin{itemize}
+    \item A base \texttt{Agent} class that extends Mesa's agent implementation with location-based functionality
+    \item Four specialized agent types: EV owners, car manufacturers, recycling facilities, and battery refurbishers
+    \item A \texttt{Battery} class representing the physical batteries that flow through the system
+    \item A state-transition mechanism for batteries modeled as the \texttt{BatteryStatus} enum
+\end{itemize}
+
+\subsection{Agent Types and Behaviors}
+
+\subsubsection{EV Owners}
+EV owners represent consumers who purchase and use electric vehicles with batteries. Each owner has:
+\begin{itemize}
+    \item Income level influencing purchasing decisions
+    \item Environmental consciousness affecting end-of-life battery decisions
+    \item Decision-making processes for battery replacement
+    \item End-of-life battery handling with realistic waiting periods
+\end{itemize}
+
+\subsubsection{Battery}
+Batteries represent physical EV battery units with:
+\begin{itemize}
+    \item Realistic degradation models accounting for age and usage cycles
+    \item Health thresholds that trigger state transitions
+    \item Capacity parameters that determine usefulness for various applications
+    \item Life cycle status progression from NEW → IN\_USE → END\_OF\_LIFE → COLLECTED → RECYCLED/REFURBISHED
+\end{itemize}
+
+\subsubsection{Car Manufacturers}
+Car manufacturers produce new batteries and collect end-of-life batteries:
+\begin{itemize}
+    \item Production capacity constraints
+    \item Warranty policies based on battery age and health
+    \item Battery collection commitments determining willingness to accept returns
+\end{itemize}
+
+\subsubsection{Recycling Facilities}
+Recycling facilities process end-of-life batteries for material recovery:
+\begin{itemize}
+    \item Processing capacity limitations
+    \item Operational dynamics including downtime
+    \item Material recovery efficiency based on battery condition
+    \item Realistic processing timeframes
+\end{itemize}
+
+\subsubsection{Battery Refurbishers}
+Battery refurbishers convert suitable used batteries for second-life applications:
+\begin{itemize}
+    \item Technical capability affecting refurbishment success rates
+    \item Capacity constraints for processing
+    \item Conversion to grid storage functionality
+    \item Quality assessment of incoming batteries
+\end{itemize}
+
+\subsection{System Dynamics}
+The model captures key circularity pathways including:
+\begin{itemize}
+    \item First-life usage with realistic degradation patterns
+    \item End-of-life decision-making by consumers
+    \item Battery collection and assessment
+    \item Recycling pathways for material recovery
+    \item Second-life applications through refurbishment
+\end{itemize}
+
+Battery flows are monitored throughout the system, with realistic constraints on processing capacities, waiting times, and operational variations that affect the efficiency of circularity pathways.

@@ -1,14 +1,34 @@
-
 from enum import Enum
 from datetime import datetime
-from .eVOwner import EVOwner
+from typing import TYPE_CHECKING, Optional
+
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parents[2]))
+
+from src.utils.constants import (
+    BATTERY_GOOD_HEALTH_THRESHOLD,
+    BATTERY_SECOND_LIFE_THRESHOLD,
+    DEFAULT_DEGRADATION_RATE
+)
+
+if TYPE_CHECKING:
+    from src.agents.eVOwner import EVOwner
 
 # This is an enum that is used to store the status of the battery in the lifecycle.
 class BatteryStatus(Enum):
-    """Status of a battery in the lifecycle."""
+    """Status of a battery in the lifecycle.
+    
+    Flow:
+    NEW -> IN_USE -> END_OF_LIFE -> 
+        -> COLLECTED (by manufacturer) ->
+            -> RECYCLED (by recycling facility)
+            -> REFURBISHED (by battery refurbisher)
+    """
     NEW = "new"
     IN_USE = "in_use"
     END_OF_LIFE = "end_of_life"
+    COLLECTED = "collected"  # Intermediate state when manufacturer takes back
     REFURBISHED = "refurbished"
     RECYCLED = "recycled"
 
@@ -34,21 +54,21 @@ class Battery:
     """
     
     # Health thresholds
-    GOOD_HEALTH_THRESHOLD = 0.8
-    SECOND_LIFE_THRESHOLD = 0.6
+    GOOD_HEALTH_THRESHOLD = BATTERY_GOOD_HEALTH_THRESHOLD
+    SECOND_LIFE_THRESHOLD = BATTERY_SECOND_LIFE_THRESHOLD
     
     def __init__(self, 
                  battery_id: str, 
                  initial_capacity: float,
                  original_owner: 'EVOwner',
-                 degradation_rate: float = 0.0005) -> None:
+                 degradation_rate: float = DEFAULT_DEGRADATION_RATE) -> None:
         """Initialize a new battery.
         
         Args:
             battery_id (str): Unique identifier for the battery
             initial_capacity (float): Initial capacity in kWh
             original_owner (EVOwner): Original owner of the battery
-            degradation_rate (float): Rate of capacity loss per cycle (default 0.05%)
+            degradation_rate (float): Rate of capacity loss per cycle (default 0.02%)
         """
         self.id = battery_id
         self.age = 0  # Age in months
@@ -60,29 +80,54 @@ class Battery:
         self.manufacture_date = datetime.now()
         self.cycle_count = 0
         self.degradation_rate = degradation_rate
+        print(f"Created new battery {battery_id} with initial capacity {initial_capacity} kWh")
         
     def degrade_battery(self, cycles: int = 1) -> None:
         """Simulate battery degradation over time and usage.
         
+        Uses a more realistic non-linear degradation model:
+        - Initial phase: Slow degradation (break-in period)
+        - Middle phase: Linear degradation 
+        - End phase: Accelerated degradation (knee point)
+        
         Args:
             cycles (int): Number of charge cycles to simulate
         """
+        previous_health = self.health
+        
         for _ in range(cycles):
-            # Linear degradation model (can be made more sophisticated)
-            capacity_loss = self.initial_capacity * self.degradation_rate
+            # Non-linear degradation model with three phases
+            if self.cycle_count < 200:  
+                # Phase 1: Initial slow degradation (break-in period)
+                degradation_factor = 0.7  # Slower initial degradation
+            elif self.cycle_count > 1000:  
+                # Phase 3: End-of-life accelerated degradation
+                degradation_factor = 1.5  # Faster degradation at end of life
+            else:
+                # Phase 2: Normal linear degradation
+                degradation_factor = 1.0
+                
+            # Calculate capacity loss based on current phase
+            capacity_loss = self.initial_capacity * self.degradation_rate * degradation_factor
             self.capacity -= capacity_loss
             self.cycle_count += 1
             
         # Update health as percentage of initial capacity
         self.health = max(0.0, self.capacity / self.initial_capacity)
         
+        # Log significant health drops
+        health_drop = previous_health - self.health
+        if health_drop > 0.05:  # Health dropped by more than 5%
+            print(f"Battery {self.id} health dropped significantly: {previous_health:.2f} -> {self.health:.2f} (age: {self.age} months, cycles: {self.cycle_count})")
+        
         # Update status based on health thresholds
         if self.status == BatteryStatus.IN_USE:
             if self.health < self.SECOND_LIFE_THRESHOLD:
-                self.status = BatteryStatus.END_OF_LIFE
-            elif self.health < self.GOOD_HEALTH_THRESHOLD:
+                self.change_status(BatteryStatus.END_OF_LIFE)
+                print(f"Battery {self.id} changed to END_OF_LIFE. Health: {self.health:.2f}, Age: {self.age} months, Cycles: {self.cycle_count}")
+            elif self.health < self.GOOD_HEALTH_THRESHOLD and self.age > 60:  # Only consider second life for older batteries
                 # Battery is in range for second life consideration
-                pass  # Status will be changed when decision is made
+                print(f"Battery {self.id} now in second-life range. Health: {self.health:.2f}, Age: {self.age} months, Cycles: {self.cycle_count}")
         
     def assess_condition(self) -> dict:
         """Assess the current condition of the battery.
@@ -110,6 +155,8 @@ class Battery:
             months (int): Number of months to age the battery
         """
         self.age += months
+        if self.age % 12 == 0:  # Log every year
+            print(f"Battery {self.id} is now {self.age} months old. Health: {self.health:.2f}")
         
     def change_status(self, new_status: BatteryStatus) -> None:
         """Change the status of the battery.
@@ -117,7 +164,9 @@ class Battery:
         Args:
             new_status (BatteryStatus): New status to set
         """
+        old_status = self.status
         self.status = new_status
+        print(f"Battery {self.id} status changed: {old_status.value} -> {new_status.value}")
         
     def is_suitable_for_second_life(self) -> bool:
         """Determine if battery is suitable for second-life applications.
@@ -125,4 +174,5 @@ class Battery:
         Returns:
             bool: True if battery health is between SECOND_LIFE_THRESHOLD and GOOD_HEALTH_THRESHOLD
         """
-        return self.SECOND_LIFE_THRESHOLD <= self.health < self.GOOD_HEALTH_THRESHOLD 
+        is_suitable = (self.SECOND_LIFE_THRESHOLD <= self.health < self.GOOD_HEALTH_THRESHOLD)
+        return is_suitable 

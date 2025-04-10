@@ -2,7 +2,18 @@ from .agent import Agent
 from .battery import Battery, BatteryStatus
 import random
 from .eVOwner import EVOwner
-from typing import Optional
+
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parents[2]))
+
+from src.utils.constants import (
+    DEFAULT_PRODUCTION_CAPACITY,
+    DEFAULT_RECYCLING_COMMITMENT,
+    DEFAULT_WARRANTY_AGE_LIMIT,
+    DEFAULT_WARRANTY_HEALTH_THRESHOLD,
+    DEFAULT_BATTERY_CAPACITY
+)
 
 class CarManufacturer(Agent):
     """Car Manufacturer agent that produces and handles batteries.
@@ -19,10 +30,10 @@ class CarManufacturer(Agent):
     def __init__(self, 
                  unique_id: str,
                  model,
-                 production_capacity: int,
-                 recycling_commitment: float,
-                 warranty_age_limit: int = 96,  # 8 years default warranty
-                 warranty_health_threshold: float = 0.7,
+                 production_capacity: int = DEFAULT_PRODUCTION_CAPACITY,
+                 recycling_commitment: float = DEFAULT_RECYCLING_COMMITMENT,
+                 warranty_age_limit: int = DEFAULT_WARRANTY_AGE_LIMIT,
+                 warranty_health_threshold: float = DEFAULT_WARRANTY_HEALTH_THRESHOLD,
                  x: float = 0.0,
                  y: float = 0.0) -> None:
         """Initialize a new Car Manufacturer.
@@ -60,7 +71,7 @@ class CarManufacturer(Agent):
         battery_id = f"BAT_{self.unique_id}_{self.batteries_produced}"
         battery = Battery(
             battery_id=battery_id,
-            initial_capacity=75.0,  # kWh, typical EV battery
+            initial_capacity=DEFAULT_BATTERY_CAPACITY,  # kWh, typical EV battery
             original_owner=owner
         )
         self.batteries_produced += 1
@@ -96,18 +107,62 @@ class CarManufacturer(Agent):
         """
         # Only take back end-of-life batteries
         if battery.status != BatteryStatus.END_OF_LIFE:
+            print(f"Manufacturer {self.unique_id} rejected battery {battery.id}: Not end-of-life (status: {battery.status.value})")
             return False
             
         # Check warranty status
         under_warranty = self.is_under_warranty(battery)
         
         # Always accept under warranty, otherwise based on recycling commitment
-        if under_warranty or random.random() < self.recycling_commitment:
+        if under_warranty:
+            print(f"Manufacturer {self.unique_id} accepted battery {battery.id}: Under warranty")
             self.batteries_taken_back += 1
-            battery.status = BatteryStatus.RECYCLED
-            return True
+            battery.change_status(BatteryStatus.COLLECTED)
+        elif random.random() < self.recycling_commitment:
+            print(f"Manufacturer {self.unique_id} accepted battery {battery.id}: Due to recycling commitment")
+            self.batteries_taken_back += 1
+            battery.change_status(BatteryStatus.COLLECTED)
+        else:
+            print(f"Manufacturer {self.unique_id} rejected battery {battery.id}: Not under warranty and failed recycling commitment check")
+            return False
             
-        return False
+        # Forward to appropriate facility based on condition
+        forwarding_success = False
+        max_attempts = 3  # Try forwarding up to 3 times
+        
+        for attempt in range(max_attempts):
+            if battery.is_suitable_for_second_life():
+                print(f"Manufacturer {self.unique_id} forwarding battery {battery.id} to refurbisher (health: {battery.health:.2f})")
+                forwarding_success = self.model.forward_to_refurbisher(battery)
+                if forwarding_success:
+                    break
+                else:
+                    print(f"Attempt {attempt+1}/{max_attempts}: Failed to forward to refurbisher, trying other options...")
+                    # If refurbishing failed, try recycling instead on subsequent attempts
+                    if attempt == max_attempts - 2:  # On the last attempt, try recycling
+                        break
+            else:
+                print(f"Manufacturer {self.unique_id} forwarding battery {battery.id} to recycler (health: {battery.health:.2f})")
+                forwarding_success = self.model.forward_to_recycler(battery)
+                if forwarding_success:
+                    break
+                else:
+                    print(f"Attempt {attempt+1}/{max_attempts}: Failed to forward to recycler, trying again...")
+        
+        # If all forwarding attempts failed, report the issue but still return True
+        # because the manufacturer did accept the battery (it's now their problem)
+        if not forwarding_success:
+            print(f"WARNING: Manufacturer {self.unique_id} accepted battery {battery.id} but failed to forward it after {max_attempts} attempts")
+            # As a last resort, try recycling even if it was suitable for second life
+            if battery.is_suitable_for_second_life():
+                print(f"Last resort: Trying to recycle battery {battery.id} that was suitable for second life")
+                forwarding_success = self.model.forward_to_recycler(battery)
+                
+            # If still unsuccessful, the model will handle it as a stranded battery
+            if not forwarding_success:
+                self.model.track_stranded_battery(battery)
+                
+        return True
         
     def update_warranty_policy(self) -> None:
         """Update warranty policy based on battery performance and business conditions."""

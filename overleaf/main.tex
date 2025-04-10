@@ -1,0 +1,60 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{apacite}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{tikz}
+\usepackage{subcaption}
+\usetikzlibrary{shapes.geometric, arrows, positioning}
+\graphicspath{{./figures/}}
+\usepackage[section]{placeins}
+\newcommand\scalemath[2]{\scalebox{#1}{\mbox{\ensuremath{\displaystyle #2}}}}
+
+% Set figure options to allow better placement
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.65}
+\renewcommand{\floatpagefraction}{0.60}
+
+\begin{document}
+
+\title{Maximizing Circularity of Electric Vehicle Batteries Through Second-Life Applications: An Agent-Based Modeling Approach for the Netherlands}
+
+\author{
+\IEEEauthorblockN{Pedram Rezaei, Bas Vennegoor, Artur Truty \\ 5727952, 5873754, 5472970}
+\IEEEauthorblockA{Technology, Policy, and Management\\
+Delft University of Technology}
+}
+
+\maketitle
+
+\begin{abstract}
+The transition to battery electric vehicles (BEVs) represents a crucial strategy in reducing transportation-related emissions, yet it introduces new challenges in resource management and waste handling. The Netherlands, with its ambitious goal of achieving 100\% circularity by 2050, faces the critical task of establishing effective end-of-life management systems for the growing number of electric vehicle batteries. This paper investigates how the circularity of BEV batteries can be maximized, with particular emphasis on second-life applications such as grid energy storage. We develop an agent-based model simulating interactions between four key stakeholders: EV owners, car manufacturers, recycling facilities, and battery refurbishers. Our model incorporates realistic battery degradation patterns, stakeholder decision-making processes, and facility constraints to evaluate different circularity strategies. Through multiple experimental scenarios, we identify the optimal combination of technical, economic, and policy parameters that maximize battery circularity rates. Results demonstrate that enhancing refurbishment technical capabilities and expanding refurbishment capacity significantly increases second-life rates, while policy interventions mandating higher recycling commitments ensure proper end-of-life management. The model further reveals that lowering the health threshold for second-life eligibility by 10\% could increase overall battery utilization by up to 40\%, effectively extending available battery capacity while delayed recycling still allows for 85\% material recovery. These findings provide valuable insights for Dutch policymakers and industry stakeholders in developing the infrastructure and policies necessary to achieve circular economy objectives in the rapidly growing electric mobility sector.
+\end{abstract}
+
+\begin{IEEEkeywords}
+agent-based modeling, circular economy, electric vehicles, lithium-ion batteries, second-life applications, recycling, Netherlands, resource recovery
+\end{IEEEkeywords}
+
+\footnote{Dit artikel is geschreven in het kader van het vak Systeemmodellering 4 TB233B van de faculteit Techniek, Bestuur en Management van de
+Technische Universiteit Delft. Totaal aantal woorden: 3250. We verklaren dat we geen generatieve AI of AI-ondersteunde technologieën hebben gebruikt in het schrijfproces of het proces van modelleren en simuleren voor de indiening van dit artikel, wel is er beperkte hulp gebruikt van AI om te helpen bij de verschillende grafieken en visualisatie}
+
+\include{introduction}
+
+\include{method}
+
+\include{discussion}
+
+\include{conclusion}
+
+\include{appendix}
+
+\clearpage
+\bibliographystyle{apacite}
+\bibliography{references}
+
+\end{document}
