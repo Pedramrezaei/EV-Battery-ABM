@@ -25,44 +25,38 @@ from src.utils.constants import (
     DEFAULT_SIMULATION_STEPS
 )
 
-try:
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
-    from generate_figures import scenarios
-    print("Successfully imported scenarios from generate_figures.py")
-except ImportError as e:
-    print(f"Error importing scenarios: {e}")
-    scenarios = {
-        "Baseline": {
-            "technical_capability": 0.7,
-            "refurbisher_capacity": 2,
-            "recycling_commitment": 0.75,
-            "second_life_threshold": 0.6
-        },
-        "Enhanced Refurbishment": {
-            "technical_capability": 0.9,
-            "refurbisher_capacity": 8,
-            "recycling_commitment": 0.75,
-            "second_life_threshold": 0.6
-        },
-        "Policy-Driven Recycling": {
-            "technical_capability": 0.7,
-            "refurbisher_capacity": 3,
-            "recycling_commitment": 0.95,
-            "second_life_threshold": 0.6
-        },
-        "Lower Second-Life Threshold": {
-            "technical_capability": 0.7,
-            "refurbisher_capacity": 2,
-            "recycling_commitment": 0.75,
-            "second_life_threshold": 0.4
-        },
-        "Combined Approach": {
-            "technical_capability": 0.9,
-            "refurbisher_capacity": 8,
-            "recycling_commitment": 0.95,
-            "second_life_threshold": 0.4
-        }
+scenarios = {
+    "Baseline": {
+        "technical_capability": 0.7,
+        "refurbisher_capacity": 2,
+        "recycling_commitment": 0.75,
+        "second_life_threshold": 0.6
+    },
+    "Enhanced Refurbishment": {
+        "technical_capability": 0.9,
+        "refurbisher_capacity": 8,
+        "recycling_commitment": 0.75,
+        "second_life_threshold": 0.6
+    },
+    "Policy-Driven Recycling": {
+        "technical_capability": 0.7,
+        "refurbisher_capacity": 3,
+        "recycling_commitment": 0.95,
+        "second_life_threshold": 0.6
+    },
+    "Lower Second-Life Threshold": {
+        "technical_capability": 0.7,
+        "refurbisher_capacity": 2,
+        "recycling_commitment": 0.75,
+        "second_life_threshold": 0.4
+    },
+    "Combined Approach": {
+        "technical_capability": 0.9,
+        "refurbisher_capacity": 8,
+        "recycling_commitment": 0.95,
+        "second_life_threshold": 0.4
     }
+}
 
 figures_dir = Path(root_dir) / "figures"
 figures_dir.mkdir(exist_ok=True)
